@@ -87,6 +87,25 @@
   .error{color:var(--orange);}
 
   footer{margin-top:40px;font-size:12px;color:var(--text-dim);text-align:center;border-top:1px solid var(--card-border);padding-top:16px;}
+
+  .downloads-box{
+    display:none;
+    background:var(--card);border:1px solid var(--card-border);border-radius:12px;
+    padding:16px 18px;margin-bottom:28px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .downloads-box.visible{display:flex;}
+  .downloads-box .dl-label{font-size:13px;color:var(--text-dim);white-space:nowrap;}
+  .downloads-box select{
+    background:var(--navy-deep);border:1px solid var(--card-border);color:var(--white);
+    padding:8px 12px;border-radius:8px;font-family:inherit;font-size:14px;min-width:220px;
+  }
+  .downloads-box button{
+    background:var(--orange);color:var(--white);border:none;padding:9px 18px;
+    border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;
+  }
+  .downloads-box button:hover{opacity:.9;}
+  .downloads-box button:disabled{opacity:.5;cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -125,6 +144,12 @@
       Forzar datos frescos (ignora caché de 6h)
     </label>
     <span class="meta-note" id="metaNote"></span>
+  </div>
+
+  <div class="downloads-box" id="downloadsBox">
+    <span class="dl-label">📄 Informe mensual (PDF):</span>
+    <select id="selInforme"></select>
+    <button id="btnDescargar">Descargar</button>
   </div>
 
   <div id="app">
@@ -244,6 +269,7 @@ function intentarLogin(){
   ocultarLogin();
   const v = document.getElementById('fechaSnapshot').value;
   cargarDatos(v ? inputToDDMMYYYY(v) : null, false);
+  cargarInformesDisponibles(valor);
 }
 
 function render(data){
@@ -728,9 +754,44 @@ const sesionInicial = obtenerCodigoValido_();
 if(sesionInicial.codigo){
   ocultarLogin();
   cargarDatos(null, false);
+  cargarInformesDisponibles(sesionInicial.codigo);
 } else {
   mostrarLogin(sesionInicial.caducado ? 'Tu sesión ha caducado por tiempo de inactividad. Introduce el código de nuevo.' : '');
 }
+
+// --- Desplegable de descarga de informes mensuales (PDF) ---
+// Diseñado para fallar en silencio: si el Apps Script todavía no expone la acción
+// "listaInformes", o la pestaña Informes_Disponibles está vacía, la caja simplemente
+// no se muestra. No afecta al resto del dashboard.
+async function cargarInformesDisponibles(codigo){
+  try{
+    const qs = new URLSearchParams();
+    qs.set('codigo', codigo);
+    qs.set('accion', 'listaInformes');
+    const res = await fetch(PROXY_URL + '?' + qs.toString());
+    const data = await res.json();
+    if(!data || !data.ok || !Array.isArray(data.informes) || data.informes.length === 0) return;
+
+    const informes = data.informes.slice().sort((a, b) => {
+      const fa = new Date(a.fechaPublicacion || 0), fb = new Date(b.fechaPublicacion || 0);
+      return fb - fa;
+    });
+
+    const sel = document.getElementById('selInforme');
+    sel.innerHTML = informes.map((inf, i) =>
+      `<option value="${inf.url}">${inf.mes} ${inf.anio}${i === 0 ? ' (más reciente)' : ''}</option>`
+    ).join('');
+
+    document.getElementById('downloadsBox').classList.add('visible');
+  }catch(e){
+    console.warn('No se ha podido cargar la lista de informes descargables:', e);
+  }
+}
+
+document.getElementById('btnDescargar').addEventListener('click', () => {
+  const sel = document.getElementById('selInforme');
+  if(sel.value) window.open(sel.value, '_blank');
+});
 </script>
 </body>
 </html>
