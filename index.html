@@ -223,7 +223,7 @@ async function cargarDatos(fechaDDMMYYYY, sinCache, mesPace){
     if(typeof Chart === 'undefined'){
       throw new Error('La librería de gráficos (Chart.js) no se ha cargado desde el CDN. Revisa la conexión o si cdnjs.cloudflare.com está bloqueado en esta red.');
     }
-    if(!fechaDDMMYYYY && data.snapshotUsado2026){
+    if(data.snapshotUsado2026){
       document.getElementById('fechaSnapshot').value = fmtDDMMYYYYtoInput(data.snapshotUsado2026);
     }
     render(data);
@@ -747,7 +747,7 @@ function renderPaceChart(curve){
 document.getElementById('btnActualizar').addEventListener('click', () => {
   const v = document.getElementById('fechaSnapshot').value;
   const sinCache = document.getElementById('chkNoCache').checked;
-  if(v) cargarDatos(inputToDDMMYYYY(v), sinCache);
+  cargarDatos(v ? inputToDDMMYYYY(v) : null, sinCache);
 });
 
 const sesionInicial = obtenerCodigoValido_();
